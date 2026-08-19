@@ -3,8 +3,7 @@
   function getSocketServerUrl() {
     if (window.LIVECHAT_SERVER_URL) return window.LIVECHAT_SERVER_URL;
     if (localStorage.getItem('livechat_server_url')) return localStorage.getItem('livechat_server_url');
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:3000';
-    return null;
+    return 'http://localhost:3000';
   }
 
   function getApiServerUrl() {
@@ -12,7 +11,7 @@
   }
 
   const targetServerUrl = getSocketServerUrl();
-  const socket = targetServerUrl ? io(targetServerUrl) : { on: () => {}, emit: () => {}, to: () => ({ emit: () => {} }) };
+  const socket = io(targetServerUrl);
 
   // Apply saved theme immediately
   const savedTheme = localStorage.getItem('livechat_theme') || 'light';
@@ -161,7 +160,7 @@
   // Fetch initial profile with static host fallback
   async function fetchProfile() {
     const apiServer = getApiServerUrl();
-    if (apiServer === null) {
+    if (!apiServer) {
       const savedUser = JSON.parse(localStorage.getItem('livechat_user')) || {
         name: 'Kovács Péter',
         email: 'kovacs.peter@livechatpro.hu',
@@ -330,7 +329,7 @@
     const avatarColor = document.getElementById('profAvatarColor').value;
 
     const apiServer = getApiServerUrl();
-    if (apiServer === null) {
+    if (!apiServer) {
       const profile = { name, email, title, initials, avatarColor, avatarUrl: null };
       updateProfileUI(profile);
       showToast('Profilkép eltávolítva!', 'info');
@@ -363,7 +362,7 @@
     const avatarColor = document.getElementById('profAvatarColor').value;
 
     const apiServer = getApiServerUrl();
-    if (apiServer === null) {
+    if (!apiServer) {
       const profile = { name, email, title, initials, avatarColor, avatarUrl: currentAvatarUrl };
       updateProfileUI(profile);
       showToast('Profil adatok és profilkép sikeresen elmentve!', 'success');
@@ -401,7 +400,7 @@
     }
 
     const apiServer = getApiServerUrl();
-    if (apiServer === null) {
+    if (!apiServer) {
       showToast('Jelszó sikeresen módosítva!', 'success');
       document.getElementById('passwordChangeForm').reset();
       return;
@@ -488,7 +487,7 @@
 
   async function loadArchive() {
     const apiServer = getApiServerUrl();
-    if (apiServer === null) {
+    if (!apiServer) {
       archiveData = [
         {
           id: 'chat_demo_1',
@@ -937,7 +936,7 @@
     };
 
     const apiServer = getApiServerUrl();
-    if (apiServer === null) {
+    if (!apiServer) {
       showToast('A beállítások sikeresen elmentve!', 'success');
       return;
     }

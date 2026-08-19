@@ -3,12 +3,11 @@
   function getSocketServerUrl() {
     if (window.LIVECHAT_SERVER_URL) return window.LIVECHAT_SERVER_URL;
     if (localStorage.getItem('livechat_server_url')) return localStorage.getItem('livechat_server_url');
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:3000';
-    return null;
+    return 'http://localhost:3000';
   }
 
   const targetServerUrl = getSocketServerUrl();
-  const socket = targetServerUrl ? io(targetServerUrl) : { on: () => {}, emit: () => {}, to: () => ({ emit: () => {} }) };
+  const socket = io(targetServerUrl);
 
   // Apply saved theme immediately
   const savedTheme = localStorage.getItem('livechat_theme') || 'light';
@@ -272,8 +271,9 @@
     if (msg.agentAvatar) {
       updateOperatorAvatarUI({ name: msg.senderName, ...msg.agentAvatar });
     }
-    // Prevent duplicate rendering if already optimistically appended
-    if (!document.getElementById(msg.id)) {
+    
+    const existingMsg = document.getElementById(msg.id);
+    if (!existingMsg) {
       appendMessage(msg);
       scrollToBottom();
     }
@@ -382,6 +382,18 @@
       currentRoomId = localStorage.getItem('livechat_roomId') || `chat_${Date.now()}`;
       localStorage.setItem('livechat_roomId', currentRoomId);
     }
+
+    const msgObj = {
+      id: `msg_cust_${Date.now()}`,
+      sender: 'customer',
+      senderName: customerData ? customerData.name : 'Ügyfél',
+      text: text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    // Optimistically render message in customer bubble stream
+    appendMessage(msgObj);
+    scrollToBottom();
 
     // Ensure session is registered on server
     if (customerData) {
