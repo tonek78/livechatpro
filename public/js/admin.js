@@ -12,7 +12,7 @@
   }
 
   const targetServerUrl = getSocketServerUrl();
-  const socket = io(targetServerUrl);
+  const socket = targetServerUrl ? io(targetServerUrl) : { on: () => {}, emit: () => {}, to: () => ({ emit: () => {} }) };
 
   // Apply saved theme immediately
   const savedTheme = localStorage.getItem('livechat_theme') || 'light';
