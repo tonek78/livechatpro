@@ -168,12 +168,6 @@
     const pInit = document.getElementById('profInitials');
     const pColor = document.getElementById('profAvatarColor');
 
-    const pName = document.getElementById('profName');
-    const pEmail = document.getElementById('profEmail');
-    const pTitle = document.getElementById('profTitle');
-    const pInit = document.getElementById('profInitials');
-    const pColor = document.getElementById('profAvatarColor');
-
     if (pName) pName.value = profile.name || '';
     if (pEmail) pEmail.value = profile.email || '';
     if (pTitle) pTitle.value = profile.title || '';
