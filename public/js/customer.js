@@ -3,11 +3,12 @@
   function getSocketServerUrl() {
     if (window.LIVECHAT_SERVER_URL) return window.LIVECHAT_SERVER_URL;
     if (localStorage.getItem('livechat_server_url')) return localStorage.getItem('livechat_server_url');
-    return 'http://localhost:3000';
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:3000';
+    return null;
   }
 
   const targetServerUrl = getSocketServerUrl();
-  const socket = io(targetServerUrl);
+  const socket = targetServerUrl ? io(targetServerUrl) : { on: () => {}, emit: () => {}, to: () => ({ emit: () => {} }) };
 
   // Apply saved theme immediately
   const savedTheme = localStorage.getItem('livechat_theme') || 'light';
