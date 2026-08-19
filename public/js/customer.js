@@ -1,9 +1,14 @@
 // LiveChat Pro - Customer Widget Client Logic
 (function () {
-  const serverUrl = window.LIVECHAT_SERVER_URL 
-    || localStorage.getItem('livechat_server_url') 
-    || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'http://localhost:3000');
-  const socket = io(serverUrl);
+  function getSocketServerUrl() {
+    if (window.LIVECHAT_SERVER_URL) return window.LIVECHAT_SERVER_URL;
+    if (localStorage.getItem('livechat_server_url')) return localStorage.getItem('livechat_server_url');
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:3000';
+    return null;
+  }
+
+  const targetServerUrl = getSocketServerUrl();
+  const socket = targetServerUrl ? io(targetServerUrl) : { on: () => {}, emit: () => {} };
 
   // Apply saved theme immediately
   const savedTheme = localStorage.getItem('livechat_theme') || 'light';
