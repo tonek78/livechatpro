@@ -168,6 +168,12 @@
     const pInit = document.getElementById('profInitials');
     const pColor = document.getElementById('profAvatarColor');
 
+    const pName = document.getElementById('profName');
+    const pEmail = document.getElementById('profEmail');
+    const pTitle = document.getElementById('profTitle');
+    const pInit = document.getElementById('profInitials');
+    const pColor = document.getElementById('profAvatarColor');
+
     if (pName) pName.value = profile.name || '';
     if (pEmail) pEmail.value = profile.email || '';
     if (pTitle) pTitle.value = profile.title || '';
@@ -175,7 +181,74 @@
     if (pColor) pColor.value = profile.avatarColor || '#6366f1';
   }
 
-  updateProfileUI(currentAgent);
+  async function fetchProfile() {
+    try {
+      const res = await fetch(`${API_URL}?action=get_profile`);
+      const data = await res.json();
+      if (data.success && data.profile) {
+        currentAgent = { ...currentAgent, ...data.profile };
+        currentAvatarUrl = data.profile.avatarUrl || null;
+        localStorage.setItem('livechat_user', JSON.stringify(currentAgent));
+        
+        const navName = document.getElementById('navUserName');
+        const navAvatar = document.getElementById('navUserAvatar');
+        if (navName) navName.textContent = data.profile.name;
+        if (navAvatar) {
+          if (data.profile.avatarUrl) {
+            navAvatar.innerHTML = `<img src="${data.profile.avatarUrl}">`;
+            navAvatar.style.backgroundColor = 'transparent';
+          } else {
+            navAvatar.textContent = data.profile.initials || 'KP';
+            navAvatar.style.backgroundColor = data.profile.avatarColor || '#6366f1';
+          }
+        }
+
+        const dispTitle = document.getElementById('profileDisplayTitle');
+        const dispSub = document.getElementById('profileDisplaySubtitle');
+        const dispBadge = document.getElementById('profileDisplayBadge');
+        const dispCircle = document.getElementById('profileAvatarCircle');
+        const btnRemove = document.getElementById('btnRemoveAvatar');
+
+        if (dispTitle) dispTitle.textContent = data.profile.name;
+        if (dispSub) dispSub.textContent = data.profile.title || 'Senior Ügyfélszolgálati Munkatárs';
+        if (dispBadge) dispBadge.textContent = data.profile.role || 'Administrator';
+        if (dispCircle) {
+          if (data.profile.avatarUrl) {
+            dispCircle.innerHTML = `<img src="${data.profile.avatarUrl}">`;
+            dispCircle.style.backgroundColor = 'transparent';
+            btnRemove?.classList.remove('d-none');
+          } else {
+            dispCircle.textContent = data.profile.initials || 'KP';
+            dispCircle.style.backgroundColor = data.profile.avatarColor || '#6366f1';
+            btnRemove?.classList.add('d-none');
+          }
+        }
+
+        const pName = document.getElementById('profName');
+        const pEmail = document.getElementById('profEmail');
+        const pTitle = document.getElementById('profTitle');
+        const pInit = document.getElementById('profInitials');
+        const pColor = document.getElementById('profAvatarColor');
+
+        if (pName) pName.value = data.profile.name || '';
+        if (pEmail) pEmail.value = data.profile.email || '';
+        if (pTitle) pTitle.value = data.profile.title || '';
+        if (pInit) pInit.value = data.profile.initials || '';
+        if (pColor) pColor.value = data.profile.avatarColor || '#6366f1';
+      }
+    } catch (e) {}
+  }
+
+  async function saveProfileToServer(profile) {
+    const formData = new FormData();
+    formData.append('action', 'save_profile');
+    formData.append('profile', JSON.stringify(profile));
+    try {
+      await fetch(API_URL, { method: 'POST', body: formData });
+    } catch (e) {}
+  }
+
+  fetchProfile();
 
   // Avatar File Input Handler
   document.getElementById('profAvatarFile')?.addEventListener('change', (e) => {
@@ -184,11 +257,10 @@
       const reader = new FileReader();
       reader.onload = function(evt) {
         currentAvatarUrl = evt.target.result;
-        const dispCircle = document.getElementById('profileAvatarCircle');
-        if (dispCircle) {
-          dispCircle.innerHTML = `<img src="${currentAvatarUrl}">`;
-          document.getElementById('btnRemoveAvatar')?.classList.remove('d-none');
-        }
+        const profile = { ...currentAgent, avatarUrl: currentAvatarUrl };
+        updateProfileUI(profile);
+        saveProfileToServer(profile);
+        showToast('Profilkép feltöltve és elmentve!', 'success');
       };
       reader.readAsDataURL(file);
     }
@@ -202,6 +274,7 @@
 
     const profile = { ...currentAgent, avatarUrl: null };
     updateProfileUI(profile);
+    saveProfileToServer(profile);
     showToast('Profilkép eltávolítva!', 'info');
   });
 
@@ -216,7 +289,8 @@
 
     const profile = { name, email, title, initials, avatarColor, avatarUrl: currentAvatarUrl };
     updateProfileUI(profile);
-    showToast('Profil adatok elmentve!', 'success');
+    saveProfileToServer(profile);
+    showToast('Profil adatok és profilkép elmentve a MySQL adatbázisba!', 'success');
   });
 
   // Password Change Form

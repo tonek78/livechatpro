@@ -280,6 +280,25 @@ switch ($action) {
         echo json_encode(['success' => true, 'archive' => $archive]);
         break;
 
+    // 10. Save Operator Profile & Avatar to MySQL
+    case 'save_profile':
+        $profileJson = $_POST['profile'] ?? '';
+        if ($profileJson) {
+            $stmt = $pdo->prepare("INSERT INTO livechat_settings (key_name, val_text) VALUES ('operator_profile', ?) ON DUPLICATE KEY UPDATE val_text = VALUES(val_text)");
+            $stmt->execute([$profileJson]);
+        }
+        echo json_encode(['success' => true]);
+        break;
+
+    // 11. Get Saved Operator Profile & Avatar from MySQL
+    case 'get_profile':
+        $stmt = $pdo->prepare("SELECT val_text FROM livechat_settings WHERE key_name = 'operator_profile'");
+        $stmt->execute();
+        $val = $stmt->fetchColumn();
+        $profile = $val ? json_decode($val, true) : null;
+        echo json_encode(['success' => true, 'profile' => $profile]);
+        break;
+
     default:
         echo json_encode(['success' => false, 'message' => 'Érvénytelen művelet']);
         break;
