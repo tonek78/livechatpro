@@ -288,8 +288,9 @@
   });
 
   // Password Change Form
-  document.getElementById('passwordChangeForm')?.addEventListener('submit', (e) => {
+  document.getElementById('passwordChangeForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const currPassword = document.getElementById('currPassword').value.trim();
     const newPassword = document.getElementById('newPassword').value.trim();
     const confirmPassword = document.getElementById('confirmPassword').value.trim();
 
@@ -298,8 +299,23 @@
       return;
     }
 
-    showToast('Jelszó sikeresen módosítva!', 'success');
-    document.getElementById('passwordChangeForm').reset();
+    const formData = new FormData();
+    formData.append('action', 'change_password');
+    formData.append('current_password', currPassword);
+    formData.append('new_password', newPassword);
+
+    try {
+      const res = await fetch(API_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Jelszó sikeresen módosítva!', 'success');
+        document.getElementById('passwordChangeForm').reset();
+      } else {
+        showToast(data.message || 'A jelenlegi jelszó hibás!', 'danger');
+      }
+    } catch (err) {
+      showToast('Hiba történt a jelszómódosítás során!', 'danger');
+    }
   });
 
   // FILE ATTACHMENT HANDLER (ADMIN)

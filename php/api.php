@@ -299,6 +299,71 @@ switch ($action) {
         echo json_encode(['success' => true, 'profile' => $profile]);
         break;
 
+    // 12. Operator Login Authentication
+    case 'login':
+        $username = trim($_POST['username'] ?? '');
+        $password = trim($_POST['password'] ?? '');
+
+        // Fetch stored password hash or set default
+        $stmt = $pdo->prepare("SELECT val_text FROM livechat_settings WHERE key_name = 'admin_password_hash'");
+        $stmt->execute();
+        $storedHash = $stmt->fetchColumn();
+
+        if (!$storedHash) {
+            // Default initial password: adminpassword123
+            $storedHash = password_hash('adminpassword123', PASSWORD_DEFAULT);
+            $stmtInit = $pdo->prepare("INSERT INTO livechat_settings (key_name, val_text) VALUES ('admin_password_hash', ?)");
+            $stmtInit->execute([$storedHash]);
+        }
+
+        if (strtolower($username) === 'admin' && password_verify($password, $storedHash)) {
+            $token = 'auth_' . bin2hex(random_bytes(16));
+            echo json_encode([
+                'success' => true,
+                'token' => $token,
+                'user' => [
+                    'name' => 'Kovács Péter',
+                    'email' => 'admin@livechatpro.hu',
+                    'title' => 'Senior Ügyfélszolgálati Munkatárs',
+                    'role' => 'Administrator',
+                    'initials' => 'KP',
+                    'avatarColor' => '#6366f1'
+                ]
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Hibás felhasználónév vagy jelszó!']);
+        }
+        break;
+
+    // 13. Password Change Verification & Hash Update
+    case 'change_password':
+        $currentPassword = trim($_POST['current_password'] ?? '');
+        $newPassword = trim($_POST['new_password'] ?? '');
+
+        if (!$currentPassword || !$newPassword) {
+            echo json_encode(['success' => false, 'message' => 'Kérjük töltse ki a jelszó mezőket!']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("SELECT val_text FROM livechat_settings WHERE key_name = 'admin_password_hash'");
+        $stmt->execute();
+        $storedHash = $stmt->fetchColumn();
+
+        if (!$storedHash) {
+            $storedHash = password_hash('adminpassword123', PASSWORD_DEFAULT);
+        }
+
+        if (password_verify($currentPassword, $storedHash)) {
+            $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+            $stmtUpdate = $pdo->prepare("INSERT INTO livechat_settings (key_name, val_text) VALUES ('admin_password_hash', ?) ON DUPLICATE KEY UPDATE val_text = VALUES(val_text)");
+            $stmtUpdate->execute([$newHash]);
+
+            echo json_encode(['success' => true, 'message' => 'Jelszó sikeresen módosítva!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'A jelenlegi jelszó hibás!']);
+        }
+        break;
+
     default:
         echo json_encode(['success' => false, 'message' => 'Érvénytelen művelet']);
         break;
