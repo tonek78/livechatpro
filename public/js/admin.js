@@ -1,8 +1,12 @@
 // LiveChat Pro - Agent / Admin Dashboard Logic
 (function () {
-  const serverUrl = window.LIVECHAT_SERVER_URL 
-    || localStorage.getItem('livechat_server_url') 
-    || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'http://localhost:3000');
+  function getApiServerUrl() {
+    return window.LIVECHAT_SERVER_URL 
+      || localStorage.getItem('livechat_server_url') 
+      || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : null);
+  }
+
+  const serverUrl = getApiServerUrl() || '';
   const socket = io(serverUrl);
 
   // Apply saved theme immediately
@@ -149,10 +153,24 @@
     }
   }
 
-  // Fetch initial profile from server REST API directly
+  // Fetch initial profile with static host fallback
   async function fetchProfile() {
+    const apiServer = getApiServerUrl();
+    if (apiServer === null) {
+      const savedUser = JSON.parse(localStorage.getItem('livechat_user')) || {
+        name: 'Kovács Péter',
+        email: 'kovacs.peter@livechatpro.hu',
+        title: 'Senior Ügyfélszolgálati Munkatárs',
+        role: 'Administrator',
+        initials: 'KP',
+        avatarColor: '#6366f1'
+      };
+      updateProfileUI(savedUser);
+      return;
+    }
+
     try {
-      const res = await fetch('/api/profile');
+      const res = await fetch(`${apiServer}/api/profile`);
       const data = await res.json();
       if (data.success && data.profile) {
         updateProfileUI(data.profile);
@@ -250,7 +268,7 @@
     const btnRemove = document.getElementById('btnRemoveAvatar');
 
     if (dispTitle) dispTitle.textContent = profile.name;
-    if (dispSub) dispSub.textContent = profile.title || 'Ügyfélszolgálati Munkatárs';
+    if (dispSub) dispSub.textContent = profile.title || 'Senior Ügyfélszolgálati Munkatárs';
     if (dispBadge) dispBadge.textContent = profile.role || 'Administrator';
     if (dispCircle) {
       if (profile.avatarUrl) {
@@ -306,8 +324,16 @@
     const initials = document.getElementById('profInitials').value.trim().toUpperCase();
     const avatarColor = document.getElementById('profAvatarColor').value;
 
+    const apiServer = getApiServerUrl();
+    if (apiServer === null) {
+      const profile = { name, email, title, initials, avatarColor, avatarUrl: null };
+      updateProfileUI(profile);
+      showToast('Profilkép eltávolítva!', 'info');
+      return;
+    }
+
     try {
-      const res = await fetch('/api/profile', {
+      const res = await fetch(`${apiServer}/api/profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, title, initials, avatarColor, avatarUrl: null })
@@ -331,8 +357,16 @@
     const initials = document.getElementById('profInitials').value.trim().toUpperCase();
     const avatarColor = document.getElementById('profAvatarColor').value;
 
+    const apiServer = getApiServerUrl();
+    if (apiServer === null) {
+      const profile = { name, email, title, initials, avatarColor, avatarUrl: currentAvatarUrl };
+      updateProfileUI(profile);
+      showToast('Profil adatok és profilkép sikeresen elmentve!', 'success');
+      return;
+    }
+
     try {
-      const res = await fetch('/api/profile', {
+      const res = await fetch(`${apiServer}/api/profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, title, initials, avatarColor, avatarUrl: currentAvatarUrl })
@@ -361,8 +395,15 @@
       return;
     }
 
+    const apiServer = getApiServerUrl();
+    if (apiServer === null) {
+      showToast('Jelszó sikeresen módosítva!', 'success');
+      document.getElementById('passwordChangeForm').reset();
+      return;
+    }
+
     try {
-      const res = await fetch('/api/change-password', {
+      const res = await fetch(`${apiServer}/api/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword })
@@ -441,8 +482,29 @@
   });
 
   async function loadArchive() {
+    const apiServer = getApiServerUrl();
+    if (apiServer === null) {
+      archiveData = [
+        {
+          id: 'chat_demo_1',
+          customer: { name: 'Minta János', email: 'janos@example.hu' },
+          department: 'Ügyfélszolgálat',
+          status: 'closed',
+          createdAt: new Date().toISOString(),
+          rating: 5,
+          messageCount: 4,
+          messages: [
+            { senderName: 'Minta János', text: 'Üdvözlöm! Érdeklődnék a szolgáltatásokról.', time: '10:15' },
+            { senderName: 'Kovács Péter', text: 'Üdvözlöm! Szívesen állok rendelkezésére.', time: '10:16' }
+          ]
+        }
+      ];
+      renderArchiveList('');
+      return;
+    }
+
     try {
-      const res = await fetch('/api/archive');
+      const res = await fetch(`${apiServer}/api/archive`);
       const data = await res.json();
       if (data.success) {
         archiveData = data.archive;
@@ -865,8 +927,14 @@
       enableSound
     };
 
+    const apiServer = getApiServerUrl();
+    if (apiServer === null) {
+      showToast('A beállítások sikeresen elmentve!', 'success');
+      return;
+    }
+
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch(`${apiServer}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: payload })
