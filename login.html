@@ -11,6 +11,17 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <!-- Custom CSS -->
   <link rel="stylesheet" href="css/custom.css">
+
+  <script>
+    fetch('./api.php?action=check_install')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.installed === false) {
+          window.location.href = './install.php';
+        }
+      })
+      .catch(() => {});
+  </script>
 </head>
 <body class="bg-main d-flex align-items-center justify-content-center min-vh-100 py-5">
 
@@ -55,7 +66,13 @@
         </button>
       </form>
 
-      <div class="text-center mt-3">
+      <div class="text-center mt-3 pt-3 border-top">
+        <a href="./install.php?force=1&step=2" class="text-decoration-none small text-primary fw-semibold">
+          <i class="bi bi-gear-fill me-1"></i> Admin fiók jelszó beállítása / Újratelepítés
+        </a>
+      </div>
+
+      <div class="text-center mt-2">
         <a href="./index.html" class="text-decoration-none small text-muted">
           <i class="bi bi-arrow-left me-1"></i> Vissza a főoldalra
         </a>

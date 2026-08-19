@@ -11,6 +11,12 @@ function formatTime($datetime) {
 
 switch ($action) {
 
+    // Check Installation Status
+    case 'check_install':
+        $installed = file_exists(__DIR__ . '/installed.lock');
+        echo json_encode(['success' => true, 'installed' => $installed, 'redirect' => $installed ? null : 'install.php']);
+        break;
+
     // 1. Customer Starts or Reconnects Chat Session
     case 'customer_join':
         $name = trim($_POST['name'] ?? 'Ügyfél');
@@ -304,30 +310,25 @@ switch ($action) {
         $username = trim($_POST['username'] ?? '');
         $password = trim($_POST['password'] ?? '');
 
-        // Fetch stored password hash or set default
-        $stmt = $pdo->prepare("SELECT val_text FROM livechat_settings WHERE key_name = 'admin_password_hash'");
-        $stmt->execute();
-        $storedHash = $stmt->fetchColumn();
+        $stmt = $pdo->prepare("SELECT * FROM livechat_users WHERE LOWER(username) = LOWER(?) AND status = 'active'");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
 
-        if (!$storedHash) {
-            // Default initial password: adminpassword123
-            $storedHash = password_hash('adminpassword123', PASSWORD_DEFAULT);
-            $stmtInit = $pdo->prepare("INSERT INTO livechat_settings (key_name, val_text) VALUES ('admin_password_hash', ?)");
-            $stmtInit->execute([$storedHash]);
-        }
-
-        if (strtolower($username) === 'admin' && password_verify($password, $storedHash)) {
+        if ($user && password_verify($password, $user['password_hash'])) {
             $token = 'auth_' . bin2hex(random_bytes(16));
             echo json_encode([
                 'success' => true,
                 'token' => $token,
                 'user' => [
-                    'name' => 'Kovács Péter',
-                    'email' => 'admin@livechatpro.hu',
-                    'title' => 'Senior Ügyfélszolgálati Munkatárs',
-                    'role' => 'Administrator',
-                    'initials' => 'KP',
-                    'avatarColor' => '#6366f1'
+                    'id' => $user['id'],
+                    'username' => $user['username'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'title' => $user['title'],
+                    'role' => $user['role'],
+                    'initials' => $user['initials'],
+                    'avatarColor' => $user['avatar_color'],
+                    'avatarUrl' => $user['avatar_url']
                 ]
             ]);
         } else {
@@ -339,28 +340,102 @@ switch ($action) {
     case 'change_password':
         $currentPassword = trim($_POST['current_password'] ?? '');
         $newPassword = trim($_POST['new_password'] ?? '');
+        $username = trim($_POST['username'] ?? 'admin');
 
         if (!$currentPassword || !$newPassword) {
             echo json_encode(['success' => false, 'message' => 'Kérjük töltse ki a jelszó mezőket!']);
             exit;
         }
 
-        $stmt = $pdo->prepare("SELECT val_text FROM livechat_settings WHERE key_name = 'admin_password_hash'");
-        $stmt->execute();
-        $storedHash = $stmt->fetchColumn();
+        $stmt = $pdo->prepare("SELECT * FROM livechat_users WHERE LOWER(username) = LOWER(?)");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
 
-        if (!$storedHash) {
-            $storedHash = password_hash('adminpassword123', PASSWORD_DEFAULT);
-        }
-
-        if (password_verify($currentPassword, $storedHash)) {
+        if ($user && password_verify($currentPassword, $user['password_hash'])) {
             $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
-            $stmtUpdate = $pdo->prepare("INSERT INTO livechat_settings (key_name, val_text) VALUES ('admin_password_hash', ?) ON DUPLICATE KEY UPDATE val_text = VALUES(val_text)");
-            $stmtUpdate->execute([$newHash]);
+            $stmtUpdate = $pdo->prepare("UPDATE livechat_users SET password_hash = ? WHERE id = ?");
+            $stmtUpdate->execute([$newHash, $user['id']]);
 
             echo json_encode(['success' => true, 'message' => 'Jelszó sikeresen módosítva!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'A jelenlegi jelszó hibás!']);
+        }
+        break;
+
+    // 14. Get All Users (User Management)
+    case 'get_users':
+        $stmt = $pdo->query("SELECT id, username, name, email, title, role, initials, avatar_color AS avatarColor, avatar_url AS avatarUrl, status, created_at FROM livechat_users ORDER BY id ASC");
+        $users = $stmt->fetchAll();
+        echo json_encode(['success' => true, 'users' => $users]);
+        break;
+
+    // 15. Create or Edit User
+    case 'save_user':
+        $userId = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
+        $username = trim($_POST['username'] ?? '');
+        $password = trim($_POST['password'] ?? '');
+        $name = trim($_POST['name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $title = trim($_POST['title'] ?? 'Ügyfélszolgálati Munkatárs');
+        $role = trim($_POST['role'] ?? 'operator');
+        $status = trim($_POST['status'] ?? 'active');
+
+        if (!$username || !$name || !$email) {
+            echo json_encode(['success' => false, 'message' => 'Minden kötelező mezőt töltsön ki!']);
+            exit;
+        }
+
+        $initials = strtoupper(substr($name, 0, 2));
+
+        if ($userId > 0) {
+            // Update existing user
+            if ($password) {
+                $passHash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE livechat_users SET username = ?, password_hash = ?, name = ?, email = ?, title = ?, role = ?, status = ?, initials = ? WHERE id = ?");
+                $stmt->execute([$username, $passHash, $name, $email, $title, $role, $status, $initials, $userId]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE livechat_users SET username = ?, name = ?, email = ?, title = ?, role = ?, status = ?, initials = ? WHERE id = ?");
+                $stmt->execute([$username, $name, $email, $title, $role, $status, $initials, $userId]);
+            }
+            echo json_encode(['success' => true, 'message' => 'Felhasználó sikeresen frissítve!']);
+        } else {
+            // Check username unique
+            $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM livechat_users WHERE LOWER(username) = LOWER(?)");
+            $stmtCheck->execute([$username]);
+            if ($stmtCheck->fetchColumn() > 0) {
+                echo json_encode(['success' => false, 'message' => 'Ez a felhasználónév már létezik!']);
+                exit;
+            }
+
+            if (!$password) $password = 'operator123';
+            $passHash = password_hash($password, PASSWORD_DEFAULT);
+
+            $stmt = $pdo->prepare("INSERT INTO livechat_users (username, password_hash, name, email, title, role, initials, avatar_color, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$username, $passHash, $name, $email, $title, $role, $initials, '#6366f1', $status]);
+            echo json_encode(['success' => true, 'message' => 'Új felhasználó sikeresen létrehozva!']);
+        }
+        break;
+
+    // 16. Delete User
+    case 'delete_user':
+        $userId = (int)($_POST['user_id'] ?? 0);
+        if ($userId > 0) {
+            // Prevent deleting the last admin
+            $adminCount = $pdo->query("SELECT COUNT(*) FROM livechat_users WHERE role = 'admin'")->fetchColumn();
+            $stmtRole = $pdo->prepare("SELECT role FROM livechat_users WHERE id = ?");
+            $stmtRole->execute([$userId]);
+            $targetRole = $stmtRole->fetchColumn();
+
+            if ($targetRole === 'admin' && $adminCount <= 1) {
+                echo json_encode(['success' => false, 'message' => 'Az utolsó Adminisztrátor fiók nem törölhető!']);
+                exit;
+            }
+
+            $stmt = $pdo->prepare("DELETE FROM livechat_users WHERE id = ?");
+            $stmt->execute([$userId]);
+            echo json_encode(['success' => true, 'message' => 'Felhasználó sikeresen törölve!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Érvénytelen felhasználó azonosító!']);
         }
         break;
 

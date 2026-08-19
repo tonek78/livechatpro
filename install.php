@@ -5,8 +5,8 @@ session_start();
 $lockFile = __DIR__ . '/installed.lock';
 $configFile = __DIR__ . '/config.php';
 
-// If already installed, prevent re-install unless ?force=1 is passed
-if (file_exists($lockFile) && !isset($_GET['force'])) {
+// If already installed, prevent re-install unless ?force=1 is passed or POST request sent
+if (file_exists($lockFile) && !isset($_GET['force']) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
     $alreadyInstalled = true;
 } else {
     $alreadyInstalled = false;
@@ -93,12 +93,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     key_name VARCHAR(64) NOT NULL UNIQUE,
                     val_text LONGTEXT
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+                CREATE TABLE IF NOT EXISTS livechat_users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(64) NOT NULL UNIQUE,
+                    password_hash VARCHAR(255) NOT NULL,
+                    name VARCHAR(128) NOT NULL,
+                    email VARCHAR(128) NOT NULL,
+                    title VARCHAR(128) DEFAULT 'Ügyfélszolgálati Munkatárs',
+                    role ENUM('admin', 'operator') DEFAULT 'operator',
+                    initials VARCHAR(4) DEFAULT 'OP',
+                    avatar_color VARCHAR(16) DEFAULT '#6366f1',
+                    avatar_url LONGTEXT,
+                    status ENUM('active', 'inactive') DEFAULT 'active',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             ");
 
-            // 3. Save Admin Password Hash & Operator Profile to Settings
+            // 3. Save Admin User to livechat_users Table
             $passHash = password_hash($adminPass, PASSWORD_DEFAULT);
-            $stmtPass = $pdo->prepare("INSERT INTO livechat_settings (key_name, val_text) VALUES ('admin_password_hash', ?) ON DUPLICATE KEY UPDATE val_text = VALUES(val_text)");
-            $stmtPass->execute([$passHash]);
+            $initials = strtoupper(substr($adminName, 0, 2));
+
+            $stmtUser = $pdo->prepare("INSERT INTO livechat_users (username, password_hash, name, email, title, role, initials, avatar_color) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), name = VALUES(name), email = VALUES(email)");
+            $stmtUser->execute([$adminUser, $passHash, $adminName, $adminEmail, 'Senior Ügyfélszolgálati Munkatárs', 'admin', $initials, '#6366f1']);
 
             $profileData = json_encode([
                 'name' => $adminName,
@@ -185,11 +202,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       <?php if ($alreadyInstalled && $step !== 3): ?>
         <div class="alert alert-warning border-0 rounded-4 p-4 text-center">
           <i class="bi bi-lock-fill fs-1 text-warning d-block mb-2"></i>
-          <h5 class="fw-bold">A rendszer már telepítve van!</h5>
-          <p class="small text-muted mb-3">Ha újratelepítenéd, töröld az <code>installed.lock</code> fájlt a szerverről.</p>
-          <a href="./login.html" class="btn btn-primary rounded-pill px-4 fw-bold shadow">
-            Tovább a Bejelentkezéshez <i class="bi bi-arrow-right me-1"></i>
-          </a>
+          <p class="small text-muted mb-3">Ha módosítani szeretnéd az Admin fiókot vagy újratelepítenéd a rendszert, kattints az alábbi gombra:</p>
+          <div class="d-flex justify-content-center gap-2">
+            <a href="./login.html" class="btn btn-primary rounded-pill px-4 fw-bold shadow">
+              Bejelentkezés <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+            <a href="?force=1&step=2" class="btn btn-outline-primary rounded-pill px-4 fw-bold">
+              <i class="bi bi-gear-fill me-1"></i> Újratelepítés / Új Jelszó
+            </a>
+          </div>
         </div>
       <?php else: ?>
 

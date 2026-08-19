@@ -366,6 +366,175 @@
     });
   });
 
+  // USER MANAGEMENT (OPERÁTOROK)
+  document.getElementById('users-tab')?.addEventListener('click', loadUsers);
+
+  let cachedUsers = [];
+  const userModalEl = document.getElementById('userModal');
+  const bsUserModal = userModalEl ? new bootstrap.Modal(userModalEl) : null;
+
+  async function loadUsers() {
+    try {
+      const res = await fetch(`${API_URL}?action=get_users`);
+      const data = await res.json();
+      if (data.success) {
+        cachedUsers = data.users;
+        renderUsersList(cachedUsers);
+      }
+    } catch (e) {}
+  }
+
+  function renderUsersList(users) {
+    const container = document.getElementById('usersListContainer');
+    if (!container) return;
+
+    if (!users || users.length === 0) {
+      container.innerHTML = `<div class="col-12 text-center p-5 text-muted"><i class="bi bi-people fs-1 d-block mb-2 text-primary opacity-50"></i>Nincs rögzített operátor.</div>`;
+      return;
+    }
+
+    container.innerHTML = '';
+    users.forEach(u => {
+      const col = document.createElement('div');
+      col.className = 'col-md-6 col-lg-4';
+      const isInactive = u.status === 'inactive';
+
+      let avatarHtml = '';
+      if (u.avatarUrl) {
+        avatarHtml = `<div class="avatar-circle me-3 shadow-sm" style="width:50px; height:50px;"><img src="${u.avatarUrl}"></div>`;
+      } else {
+        avatarHtml = `<div class="avatar-circle me-3 text-white fw-bold shadow-sm" style="width:50px; height:50px; background:${u.avatarColor || '#6366f1'}; font-size:1.2rem;">${escapeHtml(u.initials || 'OP')}</div>`;
+      }
+
+      col.innerHTML = `
+        <div class="card card-custom p-4 h-100 position-relative ${isInactive ? 'opacity-50' : ''}">
+          <div class="d-flex align-items-center mb-3">
+            ${avatarHtml}
+            <div class="overflow-hidden">
+              <h6 class="fw-bold text-main mb-0 text-truncate">${escapeHtml(u.name)}</h6>
+              <small class="text-muted text-truncate d-block">${escapeHtml(u.title || 'Ügyfélszolgálati Munkatárs')}</small>
+            </div>
+          </div>
+          
+          <div class="mb-3 small">
+            <div class="text-muted mb-1"><i class="bi bi-person me-1"></i>Felhasználónév: <strong class="text-main">${escapeHtml(u.username)}</strong></div>
+            <div class="text-muted mb-1"><i class="bi bi-envelope me-1"></i>E-mail: <strong class="text-main">${escapeHtml(u.email)}</strong></div>
+            <div class="d-flex align-items-center gap-2 mt-2">
+              <span class="badge ${u.role === 'admin' ? 'bg-primary' : 'bg-secondary'} rounded-pill px-3 py-1">${u.role === 'admin' ? 'Administrator' : 'Operátor'}</span>
+              <span class="badge ${u.status === 'active' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} rounded-pill px-3 py-1">${u.status === 'active' ? 'Aktív' : 'Inaktív'}</span>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mt-auto pt-2 border-top">
+            <button class="btn btn-outline-primary btn-sm rounded-pill flex-grow-1 btn-edit-user" data-id="${u.id}">
+              <i class="bi bi-pencil-square me-1"></i> Szerkesztés
+            </button>
+            <button class="btn btn-outline-danger btn-sm rounded-pill flex-grow-1 btn-delete-user" data-id="${u.id}">
+              <i class="bi bi-trash me-1"></i> Törlés
+            </button>
+          </div>
+        </div>
+      `;
+
+      container.appendChild(col);
+    });
+
+    // Edit User Button Click
+    document.querySelectorAll('.btn-edit-user').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.getAttribute('data-id'));
+        const user = cachedUsers.find(u => parseInt(u.id) === id);
+        if (!user) return;
+
+        document.getElementById('editUserId').value = user.id;
+        document.getElementById('modalUserName').value = user.name;
+        document.getElementById('modalUserEmail').value = user.email;
+        document.getElementById('modalUserUsername').value = user.username;
+        document.getElementById('modalUserPassword').value = '';
+        document.getElementById('modalUserTitle').value = user.title || 'Ügyfélszolgálati Munkatárs';
+        document.getElementById('modalUserRole').value = user.role;
+        document.getElementById('modalUserStatus').value = user.status;
+
+        document.getElementById('userModalTitle').innerHTML = `<i class="bi bi-pencil-square text-primary fs-4 me-2"></i> Operátor Szerkesztése`;
+        bsUserModal?.show();
+      });
+    });
+
+    // Delete User Button Click
+    document.querySelectorAll('.btn-delete-user').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.getAttribute('data-id'));
+        const user = cachedUsers.find(u => parseInt(u.id) === id);
+        if (!user) return;
+
+        showConfirmModal(
+          'Operátor Törlése',
+          `Biztosan törölni szeretné "${user.name}" (${user.username}) operátori fiókot?`,
+          async () => {
+            const formData = new FormData();
+            formData.append('action', 'delete_user');
+            formData.append('user_id', id);
+
+            const res = await fetch(API_URL, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+              showToast(data.message || 'Felhasználó törölve!', 'success');
+              loadUsers();
+            } else {
+              showToast(data.message || 'Hiba történt a törlés során!', 'danger');
+            }
+          }
+        );
+      });
+    });
+  }
+
+  // Open Add User Modal Button
+  document.getElementById('btnOpenAddUserModal')?.addEventListener('click', () => {
+    document.getElementById('userModalForm').reset();
+    document.getElementById('editUserId').value = '0';
+    document.getElementById('userModalTitle').innerHTML = `<i class="bi bi-person-plus-fill text-primary fs-4 me-2"></i> Új Operátor Hozzáadása`;
+    bsUserModal?.show();
+  });
+
+  // Submit User Modal Form
+  document.getElementById('userModalForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const userId = document.getElementById('editUserId').value;
+    const name = document.getElementById('modalUserName').value.trim();
+    const email = document.getElementById('modalUserEmail').value.trim();
+    const username = document.getElementById('modalUserUsername').value.trim();
+    const password = document.getElementById('modalUserPassword').value.trim();
+    const title = document.getElementById('modalUserTitle').value.trim();
+    const role = document.getElementById('modalUserRole').value;
+    const status = document.getElementById('modalUserStatus').value;
+
+    const formData = new FormData();
+    formData.append('action', 'save_user');
+    formData.append('user_id', userId);
+    formData.append('name', name);
+    formData.append('email', email);
+    formData.append('username', username);
+    formData.append('password', password);
+    formData.append('title', title);
+    formData.append('role', role);
+    formData.append('status', status);
+
+    try {
+      const res = await fetch(API_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Operátor elmentve!', 'success');
+        bsUserModal?.hide();
+        loadUsers();
+      } else {
+        showToast(data.message || 'Hiba történt a mentés során!', 'danger');
+      }
+    } catch (err) {
+      showToast('Hiba történt a csatlakozás során!', 'danger');
+    }
+  });
+
   // ARCHIVE & EXPORT
   document.getElementById('archive-tab')?.addEventListener('click', loadArchive);
   document.getElementById('archiveSearchInput')?.addEventListener('input', (e) => {

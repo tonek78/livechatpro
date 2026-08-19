@@ -19,11 +19,22 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="css/custom.css">
 
-  <!-- Auth Guard -->
+  <!-- Auth Guard & Install Check -->
   <script>
-    if (!localStorage.getItem('livechat_auth_token')) {
-      window.location.href = './login.html';
-    }
+    fetch('./api.php?action=check_install')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.installed === false) {
+          window.location.href = './install.php';
+        } else if (!localStorage.getItem('livechat_auth_token')) {
+          window.location.href = './login.html';
+        }
+      })
+      .catch(() => {
+        if (!localStorage.getItem('livechat_auth_token')) {
+          window.location.href = './login.html';
+        }
+      });
   </script>
 </head>
 <body class="overflow-hidden">
@@ -53,6 +64,11 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link rounded-pill px-3 py-1 fw-bold me-2" id="archive-tab" data-bs-toggle="tab" data-bs-target="#archive-pane" type="button" role="tab">
             <i class="bi bi-journal-text me-1"></i> Archívum & Export
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link rounded-pill px-3 py-1 fw-bold me-2" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button" role="tab">
+            <i class="bi bi-people-fill me-1"></i> Operátorok
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -352,11 +368,29 @@
 
         <div id="archiveListContainer" class="row g-3">
           <!-- Dynamic archive chat cards loaded here -->
+      </div>
+    </div>
+
+    <!-- PANE 4: USER MANAGEMENT (OPERÁTOROK) -->
+    <div class="tab-pane fade" id="users-pane" role="tabpanel">
+      <div class="container py-4" style="max-width: 1100px;">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h4 class="fw-bold text-main mb-1"><i class="bi bi-people-fill text-primary me-2"></i>Operátorok & Felhasználók Kezelése</h4>
+            <p class="text-muted small mb-0">Hozzon létre új operátori fiókokat vagy módosítsa a meglévő felhasználók jogosultságait.</p>
+          </div>
+          <button class="btn btn-primary rounded-pill px-4 fw-bold shadow" id="btnOpenAddUserModal">
+            <i class="bi bi-person-plus-fill me-1"></i> Új Operátor Hozzáadása
+          </button>
+        </div>
+
+        <div id="usersListContainer" class="row g-3">
+          <!-- Dynamic user cards loaded here -->
         </div>
       </div>
     </div>
 
-    <!-- PANE 4: PROFILE MANAGEMENT -->
+    <!-- PANE 5: PROFILE MANAGEMENT -->
     <div class="tab-pane fade" id="profile-pane" role="tabpanel">
       <div class="container py-4" style="max-width: 1000px;">
         <div class="row g-4">
@@ -530,6 +564,68 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- EDIT / ADD USER MODAL -->
+  <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content card-custom border-0 shadow-lg p-3">
+        <div class="modal-header border-0 pb-0">
+          <h5 id="userModalTitle" class="modal-title fw-bold text-main d-flex align-items-center gap-2">
+            <i class="bi bi-person-plus-fill text-primary fs-4"></i> Új Operátor Hozzáadása
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Bezárás"></button>
+        </div>
+        <form id="userModalForm">
+          <input type="hidden" id="editUserId" value="0">
+          <div class="modal-body py-3">
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-muted">Teljes Név</label>
+              <input type="text" id="modalUserName" class="form-control" placeholder="Például: Szabó Éva" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-muted">E-mail Cím</label>
+              <input type="email" id="modalUserEmail" class="form-control" placeholder="eva@livechatpro.hu" required>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted">Felhasználónév</label>
+                <input type="text" id="modalUserUsername" class="form-control" placeholder="eva" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted">Jelszó</label>
+                <input type="password" id="modalUserPassword" class="form-control" placeholder="••••••••">
+                <small class="text-muted" style="font-size:0.75rem;">(Szerkesztéskor hagyja üresen a jelszó megtartásához)</small>
+              </div>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted">Munkakör / Titulus</label>
+                <input type="text" id="modalUserTitle" class="form-control" value="Ügyfélszolgálati Munkatárs">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted">Szerepkör</label>
+                <select id="modalUserRole" class="form-select">
+                  <option value="operator">Operátor</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-muted">Fiók Státusz</label>
+              <select id="modalUserStatus" class="form-select">
+                <option value="active">Aktív</option>
+                <option value="inactive">Inaktív</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Mégse</button>
+            <button type="submit" id="btnSaveUserModal" class="btn btn-primary rounded-pill px-4 fw-bold">Mentés</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <!-- MODERN CONFIRMATION MODAL -->
