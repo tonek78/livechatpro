@@ -1,125 +1,227 @@
 <!DOCTYPE html>
-<html lang="hu">
+<html lang="hu" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LiveChat Pro - PHP Widget</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="./css/custom.css">
-</head>
-<body style="background: transparent; margin: 0; padding: 0; overflow: hidden; height: 100vh;">
+  <title>LiveChat Pro Widget (PHP)</title>
+  
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('livechat_theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+  </script>
 
-  <div class="chat-widget-container">
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/custom.css">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+    }
+    .widget-standalone-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--card-bg);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="widget-standalone-container">
+    
+    <!-- Widget Header -->
     <div class="chat-widget-header">
       <div class="avatar-group">
-        <div class="avatar-circle shadow-sm">
+        <div class="avatar-circle overflow-hidden">
           <i class="bi bi-headset"></i>
         </div>
         <div>
-          <h6 class="mb-0 fw-bold">LiveChat Pro</h6>
-          <small class="opacity-75" id="widgetHeaderStatus"><span class="status-dot online"></span> Online operátorok</small>
+          <h6 class="mb-0 fw-bold">LiveChat Támogatás</h6>
+          <small id="widgetHeaderStatus" class="d-flex align-items-center gap-1 opacity-75">
+            <span class="status-dot online"></span> Online operátorok
+          </small>
         </div>
       </div>
-      <div>
-        <button type="button" class="btn btn-sm text-white opacity-75 opacity-100-hover p-1 me-1" id="themeToggleBtn">
+      <div class="d-flex align-items-center gap-2">
+        <button id="themeToggleBtn" class="btn btn-sm text-white p-0 border-0 fs-5 opacity-75" title="Sötét / Világos mód">
           <i class="bi bi-moon-stars"></i>
+        </button>
+        <button id="closeWidget" class="btn btn-sm text-white p-0 border-0 fs-4 opacity-75 ms-2" title="Bezárás">
+          <i class="bi bi-x-lg"></i>
         </button>
       </div>
     </div>
 
-    <!-- VIEW 1: Start Form -->
+    <!-- VIEW 1: Start Chat Form (Online) -->
     <div id="startFormView" class="chat-start-form">
-      <div class="text-center mb-2">
-        <h5 class="fw-bold text-main mb-1">Üdvözöljük a Csevegésben!</h5>
-        <p class="text-muted small">Kérjük adja meg adatait az indításhoz.</p>
+      <div class="text-center mb-3">
+        <h5 class="fw-bold mb-1">Kedves Látogató! 👋</h5>
+        <p class="text-muted small mb-0">Adja meg adatait a csevegés elindításához</p>
       </div>
+      
       <form id="customerStartForm">
         <div class="mb-3">
           <label class="form-label small fw-bold text-muted">Az Ön Neve</label>
-          <input type="text" id="custName" class="form-control form-control-lg" placeholder="Minta János" required>
+          <input type="text" id="custName" class="form-control rounded-3" placeholder="Például: Nagy Anna" required>
         </div>
         <div class="mb-3">
           <label class="form-label small fw-bold text-muted">E-mail Cím</label>
-          <input type="email" id="custEmail" class="form-control form-control-lg" placeholder="janos@example.hu" required>
+          <input type="email" id="custEmail" class="form-control rounded-3" placeholder="anna@example.com" required>
         </div>
         <div class="mb-4">
           <label class="form-label small fw-bold text-muted">Téma / Osztály</label>
-          <select id="custDept" class="form-select form-select-lg">
-            <option value="Ügyfélszolgálat">Ügyfélszolgálat & Általános</option>
-            <option value="Technikai Támogatás">Technikai Támogatás</option>
+          <select id="custDept" class="form-select rounded-3">
+            <option value="Ügyfélszolgálat">Ügyfélszolgálat & Támogatás</option>
             <option value="Értékesítés">Értékesítés & Árajánlat</option>
+            <option value="Pénzügy">Pénzügy & Számlázás</option>
           </select>
         </div>
-        <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow-lg">
-          Csevegés Indítása <i class="bi bi-arrow-right-short ms-1 fs-4 align-middle"></i>
+        <button type="submit" class="btn btn-primary w-100 rounded-pill py-2.5 fw-bold shadow-sm">
+          Beszélgetés Indítása <i class="bi bi-arrow-right ms-1"></i>
         </button>
       </form>
     </div>
 
-    <!-- VIEW 2: Active Messages Stream -->
-    <div id="chatMessagesView" class="d-none flex-grow-1 overflow-hidden d-flex flex-column" style="min-height: 0;">
-      <div class="chat-messages-body" id="messagesBody"></div>
+    <!-- VIEW 2: OFFLINE MESSAGE FORM -->
+    <div id="offlineFormView" class="chat-start-form d-none overflow-y-auto">
+      <div class="text-center mb-2">
+        <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-1 mb-2 fw-semibold">
+          <span class="status-dot offline me-1"></span> Jelenleg Offline
+        </span>
+        <h5 class="fw-bold mb-1">Hagyjon Üzenetet! 📩</h5>
+        <p id="offlineMsgSubtitle" class="text-muted small mb-0">Operátoraink nem elérhetőek. Írja meg üzenetét és válaszolunk e-mailben!</p>
+      </div>
+      
+      <form id="offlineMessageForm">
+        <div class="mb-2">
+          <label class="form-label small fw-bold text-muted mb-1">Az Ön Neve</label>
+          <input type="text" id="offCustName" class="form-control form-control-sm rounded-3" placeholder="Nagy Anna" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-bold text-muted mb-1">E-mail Cím</label>
+          <input type="email" id="offCustEmail" class="form-control form-control-sm rounded-3" placeholder="anna@example.com" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-bold text-muted mb-1">Téma</label>
+          <input type="text" id="offSubject" class="form-control form-control-sm rounded-3" placeholder="Kérdés az árakról" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted mb-1">Üzenet</label>
+          <textarea id="offMessage" class="form-control form-control-sm rounded-3" rows="3" placeholder="Írja le részletesen kérdését..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-danger w-100 rounded-pill py-2 fw-bold shadow-sm">
+          <i class="bi bi-send me-1"></i> Üzenet Elküldése
+        </button>
+      </form>
+    </div>
 
+    <!-- VIEW 3: OFFLINE SUCCESS ACKNOWLEDGMENT -->
+    <div id="offlineSuccessView" class="chat-rating-container d-none text-center p-4">
+      <div class="stat-icon bg-success text-white mb-3 mx-auto" style="width:60px; height:60px; font-size:2rem; border-radius:50%;">
+        <i class="bi bi-check-lg"></i>
+      </div>
+      <h5 class="fw-bold mb-2">Üzenet Elküldve!</h5>
+      <p class="text-muted small mb-4">Köszönjük megkeresését! Kollégáink a megadott e-mail címre válaszolni fognak.</p>
+      <button id="btnNewOfflineMsg" class="btn btn-outline-secondary rounded-pill px-4 btn-sm">
+        Új üzenet írása
+      </button>
+    </div>
+
+    <!-- VIEW 4: Chat Messages Stream -->
+    <div id="chatMessagesView" class="d-none d-flex flex-column flex-grow-1 overflow-hidden" style="min-height:0;">
+      
+      <!-- Messages Stream Area -->
+      <div id="messagesBody" class="chat-messages-body">
+        <!-- Messages injected dynamically -->
+      </div>
+
+      <!-- Typing Indicator -->
+      <div id="typingIndicator" class="px-3 py-1.5 d-none flex-shrink-0">
+        <div class="d-flex align-items-center gap-2">
+          <div class="typing-dots-pill">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <span class="typing-text"><strong id="typingAgentName">Operátor</strong> épp ír...</span>
+        </div>
+      </div>
+
+      <!-- Quick Reply Options -->
+      <div class="px-3 py-2 bg-light border-top border-bottom">
+        <small class="text-muted d-block mb-1" style="font-size:0.725rem; font-weight:600;">GYORS KÉRDÉSEK:</small>
+        <div class="quick-replies">
+          <button class="quick-reply-btn" data-reply="Szeretnék árajánlatot kérni!">💼 Árajánlat</button>
+          <button class="quick-reply-btn" data-reply="Mik a nyitvatartási idők?">🕒 Nyitvatartás</button>
+          <button class="quick-reply-btn" data-reply="Technikai segítségre van szükségem.">🛠️ Segítség</button>
+        </div>
+      </div>
+
+      <!-- Chat Footer / Input with File Attachment Button -->
       <div class="chat-widget-footer">
+        <input type="file" id="customerFileInput" class="d-none">
+        <button id="btnAttachFile" class="btn btn-light rounded-circle text-muted p-0 me-1" style="width:38px; height:38px; flex-shrink:0;" title="Fájl / Kép csatolása">
+          <i class="bi bi-paperclip fs-5"></i>
+        </button>
         <input type="text" id="messageInput" class="form-control" placeholder="Írjon üzenetet..." autocomplete="off">
-        <button id="sendMsgBtn" class="btn-send-chat shadow">
+        <button id="sendMsgBtn" class="btn-send-chat" title="Küldés">
           <i class="bi bi-send-fill fs-6"></i>
         </button>
       </div>
     </div>
 
-    <!-- VIEW 3: Offline Ticket Form -->
-    <div id="offlineFormView" class="chat-start-form d-none">
-      <div class="text-center mb-2">
-        <div class="stat-icon bg-warning text-dark mx-auto mb-2" style="width:48px; height:48px; border-radius:50%;">
-          <i class="bi bi-clock-history"></i>
-        </div>
-        <h5 class="fw-bold text-main mb-1">Minden operátorunk elfoglalt</h5>
-        <p class="text-muted small" id="offlineMsgSubtitle">Hagyjon üzenetet, és e-mailben válaszolunk!</p>
-      </div>
-      <form id="offlineMessageForm">
-        <div class="mb-2">
-          <input type="text" id="offCustName" class="form-control" placeholder="Név" required>
-        </div>
-        <div class="mb-2">
-          <input type="email" id="offCustEmail" class="form-control" placeholder="E-mail" required>
-        </div>
-        <div class="mb-2">
-          <input type="text" id="offSubject" class="form-control" placeholder="Tárgy" required>
-        </div>
-        <div class="mb-3">
-          <textarea id="offMessage" class="form-control" rows="3" placeholder="Az Ön üzenete..." required></textarea>
-        </div>
-        <button type="submit" class="btn btn-warning w-100 rounded-pill fw-bold text-dark shadow">
-          Üzenet Elküldése
-        </button>
-      </form>
-    </div>
-
-    <!-- VIEW 4: Offline Success View -->
-    <div id="offlineSuccessView" class="chat-rating-container d-none">
-      <i class="bi bi-check-circle-fill text-success fs-1"></i>
-      <h5 class="fw-bold text-main">Köszönjük megkeresését!</h5>
-      <p class="text-muted small">Üzenetét rögzítettük. Munkatársunk e-mailben felveszi Önnel a kapcsolatot.</p>
-    </div>
-
-    <!-- VIEW 5: Rating View -->
+    <!-- VIEW 5: Chat Rating & Feedback -->
     <div id="chatRatingView" class="chat-rating-container d-none">
-      <i class="bi bi-heart-fill text-danger fs-1"></i>
-      <h5 class="fw-bold text-main">Köszönjük a beszélgetést!</h5>
-      <p class="text-muted small">Kérjük értékelje kollégánk munkáját:</p>
-      <div class="star-rating mb-3">
+      <div class="stat-icon bg-warning text-dark mb-2 mx-auto" style="width:60px; height:60px; font-size:2rem; border-radius:50%;">
+        ⭐
+      </div>
+      <h5 class="fw-bold mb-1">Beszélgetés Értékelése</h5>
+      <p class="text-muted small">Kérjük értékelje az ügyfélszolgálat munkáját!</p>
+      
+      <div class="star-rating" id="starRating">
         <span class="star active" data-value="1">★</span>
         <span class="star active" data-value="2">★</span>
         <span class="star active" data-value="3">★</span>
         <span class="star active" data-value="4">★</span>
         <span class="star active" data-value="5">★</span>
       </div>
-      <button id="submitRatingBtn" class="btn btn-primary rounded-pill px-4 fw-bold">Értékelés Küldése</button>
+
+      <textarea id="ratingFeedback" class="form-control mt-3" rows="3" placeholder="Vélemény (opcionális)..."></textarea>
+      
+      <button id="submitRatingBtn" class="btn btn-primary w-100 rounded-pill py-2 fw-bold mt-2">
+        Értékelés Beküldése
+      </button>
     </div>
+
   </div>
 
+  <!-- Dummy hidden launcher element so customer.js doesn't crash -->
+  <button id="chatLauncher" class="d-none"></button>
+  <span id="badgeNotify" class="d-none"></span>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Customer JS -->
   <script src="./js/customer.js"></script>
+  
+  <script>
+    // Post message to parent window on close button click
+    document.getElementById('closeWidget')?.addEventListener('click', () => {
+      window.parent.postMessage({ type: 'LIVECHAT_PRO_CLOSE' }, '*');
+    });
+  </script>
 </body>
 </html>

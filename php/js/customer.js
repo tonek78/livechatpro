@@ -1,4 +1,4 @@
-// LiveChat Pro - PHP & MySQL Customer Client Logic (AJAX Polling)
+// LiveChat Pro - PHP & MySQL Customer Client Logic (100% Full Feature Parity)
 (function () {
   const API_URL = './api.php';
 
@@ -12,10 +12,11 @@
   let lastMessageId = 0;
   let pollInterval = null;
   let unreadCount = 0;
+  let selectedRating = 5;
 
   // DOM Elements
   const launcher = document.getElementById('chatLauncher');
-  const widgetContainer = document.getElementById('chatWidget');
+  const widgetContainer = document.querySelector('.widget-standalone-container') || document.getElementById('chatWidget');
   const closeBtn = document.getElementById('closeWidget');
   const badgeNotify = document.getElementById('badgeNotify');
   const customerForm = document.getElementById('customerStartForm');
@@ -23,6 +24,8 @@
   const messagesBody = document.getElementById('messagesBody');
   const messageInput = document.getElementById('messageInput');
   const sendBtn = document.getElementById('sendMsgBtn');
+  const btnAttachFile = document.getElementById('btnAttachFile');
+  const customerFileInput = document.getElementById('customerFileInput');
 
   // Play audio alert
   function playNotificationSound() {
@@ -42,23 +45,13 @@
     } catch (e) {}
   }
 
-  // Toggle Widget Window
-  if (launcher && widgetContainer) {
-    launcher.addEventListener('click', () => {
-      const isOpen = widgetContainer.classList.toggle('open');
-      if (isOpen) {
-        unreadCount = 0;
-        updateBadge();
-        messageInput?.focus();
-      }
-    });
-  }
-
-  if (closeBtn && widgetContainer) {
-    closeBtn.addEventListener('click', () => {
-      widgetContainer.classList.remove('open');
-    });
-  }
+  // Dark / Light Theme toggle
+  document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('livechat_theme', newTheme);
+  });
 
   function updateBadge() {
     if (!badgeNotify) return;
@@ -167,10 +160,27 @@
     showView('offline');
   });
 
-  // AJAX Short Polling (Every 2.5 seconds)
+  // FILE ATTACHMENT HANDLER (CUSTOMER)
+  btnAttachFile?.addEventListener('click', () => {
+    customerFileInput?.click();
+  });
+
+  customerFileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file && currentRoomId) {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        sendMessage('', evt.target.result, file.name);
+      };
+      reader.readAsDataURL(file);
+      customerFileInput.value = '';
+    }
+  });
+
+  // AJAX Short Polling (Every 2 seconds)
   function startPolling() {
     clearInterval(pollInterval);
-    pollInterval = setInterval(fetchNewMessages, 2500);
+    pollInterval = setInterval(fetchNewMessages, 2000);
   }
 
   async function fetchNewMessages() {
@@ -208,14 +218,15 @@
   }
 
   // Send Message
-  async function sendMessage(text) {
-    if (!text || !currentRoomId) return;
+  async function sendMessage(text, fileUrl = '', fileName = '') {
+    if ((!text && !fileUrl) || !currentRoomId) return;
 
     const optMsg = {
       id: `temp_${Date.now()}`,
       sender: 'customer',
       senderName: customerData ? customerData.name : 'Ön',
       text: text,
+      file: fileUrl ? { data: fileUrl, name: fileName, isImage: pregMatchImage(fileName) } : null,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -229,6 +240,8 @@
     formData.append('sender', 'customer');
     formData.append('sender_name', customerData ? customerData.name : 'Ügyfél');
     formData.append('text', text);
+    formData.append('file_url', fileUrl);
+    formData.append('file_name', fileName);
 
     try {
       const res = await fetch(API_URL, { method: 'POST', body: formData });
@@ -237,6 +250,10 @@
         if (data.message.id > lastMessageId) lastMessageId = data.message.id;
       }
     } catch (e) {}
+  }
+
+  function pregMatchImage(filename) {
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
   }
 
   sendBtn?.addEventListener('click', (e) => {
@@ -249,6 +266,15 @@
       e.preventDefault();
       if (messageInput) sendMessage(messageInput.value.trim());
     }
+  });
+
+  // Quick reply pills
+  document.querySelectorAll('.quick-reply-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const replyText = btn.getAttribute('data-reply');
+      sendMessage(replyText);
+    });
   });
 
   function appendMessage(msg) {
@@ -265,6 +291,15 @@
       avatarBubbleHtml = `<div class="avatar-circle-sm me-2 text-white fw-bold bg-primary">OP</div>`;
     }
 
+    let fileContentHtml = '';
+    if (msg.file) {
+      if (msg.file.isImage) {
+        fileContentHtml = `<div class="mb-1"><img src="${msg.file.data}" class="rounded-3 img-fluid shadow-sm" style="max-height:180px; cursor:pointer;" onclick="window.open('${msg.file.data}')"></div>`;
+      } else {
+        fileContentHtml = `<div class="p-2 bg-light rounded border mb-1 d-flex align-items-center gap-2"><i class="bi bi-file-earmark-arrow-down fs-4 text-primary"></i><div><small class="fw-bold d-block text-truncate" style="max-width:180px;">${escapeHtml(msg.file.name)}</small><a href="${msg.file.data}" download="${msg.file.name}" class="btn btn-sm btn-link p-0 text-primary fw-bold" style="font-size:0.75rem;">Letöltés</a></div></div>`;
+      }
+    }
+
     if (msg.sender === 'system') {
       row.innerHTML = `<div class="message-bubble mx-auto">${escapeHtml(msg.text)}</div>`;
     } else {
@@ -272,6 +307,7 @@
         <div class="d-flex align-items-start gap-2 ${msg.sender === 'agent' ? '' : 'justify-content-end'}">
           ${msg.sender === 'agent' ? avatarBubbleHtml : ''}
           <div style="max-width: calc(100% - 44px);">
+            ${fileContentHtml}
             <div class="message-bubble">${escapeHtml(msg.text)}</div>
             <div class="message-meta">
               <span>${escapeHtml(senderLabel)}</span> • <span>${msg.time}</span>
@@ -283,6 +319,27 @@
 
     messagesBody.appendChild(row);
   }
+
+  // Star rating interactivity
+  const stars = document.querySelectorAll('.star-rating .star');
+  stars.forEach(star => {
+    star.addEventListener('click', () => {
+      selectedRating = parseInt(star.getAttribute('data-value'));
+      stars.forEach(s => {
+        if (parseInt(s.getAttribute('data-value')) <= selectedRating) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+    });
+  });
+
+  document.getElementById('submitRatingBtn')?.addEventListener('click', () => {
+    localStorage.removeItem('livechat_roomId');
+    currentRoomId = null;
+    showView('form');
+  });
 
   function escapeHtml(str) {
     return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
