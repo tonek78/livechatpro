@@ -1,6 +1,8 @@
 // LiveChat Pro - Agent / Admin Dashboard Logic
 (function () {
-  const serverUrl = window.LIVECHAT_SERVER_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : (localStorage.getItem('livechat_backend_url') || undefined));
+  const serverUrl = window.LIVECHAT_SERVER_URL 
+    || localStorage.getItem('livechat_server_url') 
+    || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'http://localhost:3000');
   const socket = io(serverUrl);
 
   // Apply saved theme immediately
