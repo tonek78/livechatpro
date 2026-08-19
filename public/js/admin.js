@@ -953,11 +953,24 @@
     }
   });
 
+  // DYNAMIC EMBED CODE GENERATOR
+  function updateEmbedCodeSnippet() {
+    const embedPre = document.getElementById('embedCodeSnippet');
+    if (!embedPre) return;
+
+    const origin = window.location.origin;
+    embedPre.textContent = `<!-- LiveChat Pro Widget Embed -->\n<script src="${origin}/widget.js" data-server="${origin}"></script>`;
+  }
+
+  updateEmbedCodeSnippet();
+
   // COPY EMBED CODE SNIPPET
   document.getElementById('btnCopyEmbedCode')?.addEventListener('click', () => {
-    const code = document.getElementById('embedCodeSnippet').innerText;
-    navigator.clipboard.writeText(code);
-    showToast('Beágyazó kód másolva a vágólapra!', 'success');
+    const embedPre = document.getElementById('embedCodeSnippet');
+    if (embedPre) {
+      navigator.clipboard.writeText(embedPre.textContent);
+      showToast('Beágyazó kód másolva a vágólapra!', 'success');
+    }
   });
 
   function escapeHtml(str) {
