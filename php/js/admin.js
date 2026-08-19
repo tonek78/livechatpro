@@ -23,10 +23,11 @@
 
   // Logout Handler
   document.getElementById('btnLogout')?.addEventListener('click', () => {
+    localStorage.removeItem('livechat_auth_token');
     showToast('Sikeres kijelentkezés', 'info');
     setTimeout(() => {
-      window.location.href = './index.html';
-    }, 1000);
+      window.location.href = './login.html';
+    }, 500);
   });
 
   // DOM Elements
