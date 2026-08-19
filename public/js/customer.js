@@ -1,6 +1,9 @@
 // LiveChat Pro - Customer Widget Client Logic
 (function () {
   function getSocketServerUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const serverParam = urlParams.get('server');
+    if (serverParam) return serverParam;
     if (window.LIVECHAT_SERVER_URL) return window.LIVECHAT_SERVER_URL;
     if (localStorage.getItem('livechat_server_url')) return localStorage.getItem('livechat_server_url');
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:3000';

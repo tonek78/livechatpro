@@ -1,16 +1,30 @@
 /**
  * LiveChat Pro - Universal Embeddable Widget Loader
- * Usage: <script src="http://localhost:3000/widget.js" data-server="http://localhost:3000"></script>
+ * Usage: <script src="https://mellow-dodol-be3af4.netlify.app/widget.js" data-server="http://localhost:3000"></script>
  */
 (function () {
   if (window.LiveChatProLoaded) return;
   window.LiveChatProLoaded = true;
 
-  // Determine Server URL from script tag attribute or current origin
   const scriptTag = document.currentScript || document.querySelector('script[src*="widget.js"]');
+  
+  // Determine script origin (where widget.js is hosted)
+  let widgetHost = 'http://localhost:3000';
+  if (scriptTag && scriptTag.src) {
+    try {
+      const url = new URL(scriptTag.src);
+      widgetHost = url.origin;
+    } catch (e) {}
+  } else if (window.location.origin) {
+    widgetHost = window.location.origin;
+  }
+
+  // Determine Socket.IO backend server URL
   const serverUrl = (scriptTag && scriptTag.getAttribute('data-server')) 
     || window.LIVECHAT_SERVER_URL 
-    || window.location.origin;
+    || widgetHost;
+
+  const iframeSrc = `${widgetHost}/widget.html?server=${encodeURIComponent(serverUrl)}`;
 
   // Create Container Elements
   const container = document.createElement('div');
@@ -20,7 +34,7 @@
   container.innerHTML = `
     <!-- Floating Frame -->
     <div id="livechat-iframe-wrapper" style="width:380px; height:580px; max-width:calc(100vw - 30px); max-height:calc(100vh - 100px); display:none; border-radius:24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); overflow:hidden; transition:all 0.3s ease;">
-      <iframe id="livechat-pro-iframe" src="${serverUrl}/widget.html" 
+      <iframe id="livechat-pro-iframe" src="${iframeSrc}" 
         style="border:none; width:100%; height:100%; background:transparent;"
         allow="autoplay">
       </iframe>
@@ -46,7 +60,6 @@
     launcher.style.transform = isOpen ? 'scale(0.9) rotate(90deg)' : 'scale(1)';
   });
 
-  // Listen for iframe close postMessage
   window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'LIVECHAT_PRO_CLOSE') {
       isOpen = false;
@@ -55,5 +68,5 @@
     }
   });
 
-  console.log('[LiveChat Pro] Widget loaded from server:', serverUrl);
+  console.log('[LiveChat Pro] Widget loaded. Host:', widgetHost, 'Backend:', serverUrl);
 })();
