@@ -68,5 +68,35 @@
     "status": "closed",
     "unreadAgent": 0,
     "createdAt": "2026-08-12T17:33:38.644Z"
+  },
+  {
+    "id": "chat_1787159948126",
+    "customer": {
+      "name": "Karcsi",
+      "email": "kar@mail.hu",
+      "socketId": "dpm6MTnedB0G7zbLAAAF",
+      "ip": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+    },
+    "department": "Ügyfélszolgálat",
+    "messages": [
+      {
+        "id": "msg_welcome",
+        "sender": "system",
+        "senderName": "LiveChat Bot",
+        "text": "Üdvözöljük, Karcsi! Üdvözöljük! Egy operátor hamarosan csatlakozik a beszélgetéshez. (Osztály: Ügyfélszolgálat)",
+        "time": "19:19"
+      },
+      {
+        "id": "msg_1787159955161",
+        "sender": "customer",
+        "senderName": "Karcsi",
+        "text": "Mik a nyitvatartási idők?",
+        "time": "19:19"
+      }
+    ],
+    "status": "active",
+    "unreadAgent": 0,
+    "createdAt": "2026-08-19T17:19:08.126Z"
   }
 ]

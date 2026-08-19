@@ -927,15 +927,45 @@
   });
 
   function populateSettings(settings) {
-    if (!settings) return;
     const welcomeInput = document.getElementById('settingWelcomeMsg');
     const offlineInput = document.getElementById('settingOfflineMsg');
     const soundToggle = document.getElementById('settingSoundToggle');
+    const serverUrlInput = document.getElementById('settingServerUrl');
 
     if (welcomeInput) welcomeInput.value = settings.welcomeMessage || '';
     if (offlineInput) offlineInput.value = settings.offlineMessage || '';
     if (soundToggle) soundToggle.checked = settings.enableSound !== false;
+    if (serverUrlInput) serverUrlInput.value = localStorage.getItem('livechat_server_url') || '';
   }
+
+  // Populate server URL input field on load
+  const serverUrlInput = document.getElementById('settingServerUrl');
+  if (serverUrlInput) {
+    serverUrlInput.value = localStorage.getItem('livechat_server_url') || '';
+  }
+
+  document.getElementById('btnSaveServerUrl')?.addEventListener('click', () => {
+    const input = document.getElementById('settingServerUrl');
+    if (input) {
+      let val = input.value.trim();
+      if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+        val = `https://${val}`;
+        input.value = val;
+      }
+      if (val) {
+        localStorage.setItem('livechat_server_url', val);
+        window.LIVECHAT_SERVER_URL = val;
+        updateEmbedCodeSnippet();
+        showToast('Render Szerver URL elmentve! Újracsatlakozás...', 'success');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        localStorage.removeItem('livechat_server_url');
+        delete window.LIVECHAT_SERVER_URL;
+        updateEmbedCodeSnippet();
+        showToast('Szerver URL törölve!', 'info');
+      }
+    }
+  });
 
   document.getElementById('btnSaveSettings')?.addEventListener('click', async () => {
     const welcomeMessage = document.getElementById('settingWelcomeMsg').value.trim();
@@ -976,7 +1006,8 @@
     if (!embedPre) return;
 
     const origin = window.location.origin;
-    embedPre.textContent = `<!-- LiveChat Pro Widget Embed -->\n<script src="${origin}/widget.js" data-server="${origin}"></script>`;
+    const backendUrl = localStorage.getItem('livechat_server_url') || origin;
+    embedPre.textContent = `<!-- LiveChat Pro Widget Embed -->\n<script src="${origin}/widget.js" data-server="${backendUrl}"></script>`;
   }
 
   updateEmbedCodeSnippet();
