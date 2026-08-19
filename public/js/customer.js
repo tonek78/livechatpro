@@ -1,6 +1,7 @@
 // LiveChat Pro - Customer Widget Client Logic
 (function () {
-  const socket = io();
+  const serverUrl = window.LIVECHAT_SERVER_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : (localStorage.getItem('livechat_backend_url') || undefined));
+  const socket = io(serverUrl);
 
   // Apply saved theme immediately
   const savedTheme = localStorage.getItem('livechat_theme') || 'light';
