@@ -4,7 +4,7 @@
     if (window.LIVECHAT_SERVER_URL) return window.LIVECHAT_SERVER_URL;
     if (localStorage.getItem('livechat_server_url')) return localStorage.getItem('livechat_server_url');
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:3000';
-    return null;
+    return window.location.origin;
   }
 
   function getApiServerUrl() {
@@ -12,7 +12,7 @@
   }
 
   const targetServerUrl = getSocketServerUrl();
-  const socket = targetServerUrl ? io(targetServerUrl) : { on: () => {}, emit: () => {} };
+  const socket = io(targetServerUrl);
 
   // Apply saved theme immediately
   const savedTheme = localStorage.getItem('livechat_theme') || 'light';
@@ -821,19 +821,23 @@
     socket.emit('agent:typing', { roomId: activeRoomId, isTyping: false });
   }
 
-  adminSendBtn.addEventListener('click', () => {
-    sendAdminMessage(adminMessageInput.value.trim());
+  adminSendBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (adminMessageInput) sendAdminMessage(adminMessageInput.value.trim());
   });
 
-  adminMessageInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      sendAdminMessage(adminMessageInput.value.trim());
+  adminMessageInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (adminMessageInput) sendAdminMessage(adminMessageInput.value.trim());
     } else {
-      socket.emit('agent:typing', { roomId: activeRoomId, isTyping: true, agentName: currentAgent.name });
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        socket.emit('agent:typing', { roomId: activeRoomId, isTyping: false });
-      }, 1500);
+      if (activeRoomId) {
+        socket.emit('agent:typing', { roomId: activeRoomId, isTyping: true, agentName: currentAgent.name });
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+          socket.emit('agent:typing', { roomId: activeRoomId, isTyping: false });
+        }, 1500);
+      }
     }
   });
 

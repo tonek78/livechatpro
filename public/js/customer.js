@@ -4,11 +4,11 @@
     if (window.LIVECHAT_SERVER_URL) return window.LIVECHAT_SERVER_URL;
     if (localStorage.getItem('livechat_server_url')) return localStorage.getItem('livechat_server_url');
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:3000';
-    return null;
+    return window.location.origin;
   }
 
   const targetServerUrl = getSocketServerUrl();
-  const socket = targetServerUrl ? io(targetServerUrl) : { on: () => {}, emit: () => {} };
+  const socket = io(targetServerUrl);
 
   // Apply saved theme immediately
   const savedTheme = localStorage.getItem('livechat_theme') || 'light';
@@ -197,7 +197,12 @@
     customerData = { name, email, department };
     localStorage.setItem('livechat_customer', JSON.stringify(customerData));
 
-    socket.emit('customer:join', { name, email, department });
+    if (!currentRoomId) {
+      currentRoomId = `chat_${Date.now()}`;
+      localStorage.setItem('livechat_roomId', currentRoomId);
+    }
+
+    socket.emit('customer:join', { name, email, department, customId: currentRoomId });
     showView('chat');
   });
 
@@ -267,8 +272,11 @@
     if (msg.agentAvatar) {
       updateOperatorAvatarUI({ name: msg.senderName, ...msg.agentAvatar });
     }
-    appendMessage(msg);
-    scrollToBottom();
+    // Prevent duplicate rendering if already optimistically appended
+    if (!document.getElementById(msg.id)) {
+      appendMessage(msg);
+      scrollToBottom();
+    }
 
     if (msg.sender === 'agent') {
       playNotificationSound();
@@ -286,7 +294,11 @@
 
   customerFileInput?.addEventListener('change', (e) => {
     const file = e.target.files[0];
-    if (file && currentRoomId) {
+    if (file) {
+      if (!currentRoomId) {
+        currentRoomId = `chat_${Date.now()}`;
+        localStorage.setItem('livechat_roomId', currentRoomId);
+      }
       const reader = new FileReader();
       reader.onload = function(evt) {
         socket.emit('chat:send_file', {
@@ -307,6 +319,7 @@
   function appendMessage(msg) {
     if (!messagesBody) return;
     const row = document.createElement('div');
+    row.id = msg.id || `msg_${Date.now()}`;
     row.classList.add('message-row', msg.sender);
 
     let senderLabel = msg.senderName;
@@ -361,9 +374,24 @@
     if (messagesBody) messagesBody.scrollTop = messagesBody.scrollHeight;
   }
 
-  // Send message logic
+  // Send message logic (Bulletproof auto room ID & instant send)
   function sendMessage(text) {
-    if (!text || !currentRoomId) return;
+    if (!text) return;
+
+    if (!currentRoomId) {
+      currentRoomId = localStorage.getItem('livechat_roomId') || `chat_${Date.now()}`;
+      localStorage.setItem('livechat_roomId', currentRoomId);
+    }
+
+    // Ensure session is registered on server
+    if (customerData) {
+      socket.emit('customer:join', {
+        name: customerData.name,
+        email: customerData.email,
+        department: customerData.department,
+        customId: currentRoomId
+      });
+    }
 
     socket.emit('customer:message', {
       roomId: currentRoomId,
@@ -374,25 +402,30 @@
     socket.emit('customer:typing', { roomId: currentRoomId, isTyping: false });
   }
 
-  sendBtn?.addEventListener('click', () => {
+  sendBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
     if (messageInput) sendMessage(messageInput.value.trim());
   });
 
   messageInput?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      sendMessage(messageInput.value.trim());
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (messageInput) sendMessage(messageInput.value.trim());
     } else {
-      socket.emit('customer:typing', { roomId: currentRoomId, isTyping: true });
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        socket.emit('customer:typing', { roomId: currentRoomId, isTyping: false });
-      }, 1500);
+      if (currentRoomId) {
+        socket.emit('customer:typing', { roomId: currentRoomId, isTyping: true });
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+          socket.emit('customer:typing', { roomId: currentRoomId, isTyping: false });
+        }, 1500);
+      }
     }
   });
 
   // Quick reply pills
   document.querySelectorAll('.quick-reply-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
       const replyText = btn.getAttribute('data-reply');
       sendMessage(replyText);
     });
