@@ -547,7 +547,7 @@
       sender: 'agent',
       senderName: currentAgent.name,
       text: text,
-      file: fileUrl ? { data: fileUrl, name: fileName, isImage: (bool)pregMatchImage(fileName) } : null,
+      file: fileUrl ? { data: fileUrl, name: fileName, isImage: pregMatchImage(fileName) } : null,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
