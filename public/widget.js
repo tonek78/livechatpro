@@ -19,12 +19,13 @@
     widgetHost = window.location.origin;
   }
 
-  // Determine Socket.IO backend server URL
-  const serverUrl = (scriptTag && scriptTag.getAttribute('data-server')) 
-    || window.LIVECHAT_SERVER_URL 
-    || widgetHost;
+  // Determine Socket.IO backend server URL (ignore Netlify static host as backend)
+  let serverUrl = scriptTag ? scriptTag.getAttribute('data-server') : null;
+  if (!serverUrl || serverUrl.includes('netlify.app')) {
+    serverUrl = window.LIVECHAT_SERVER_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3000' : '');
+  }
 
-  const iframeSrc = `${widgetHost}/widget.html?server=${encodeURIComponent(serverUrl)}`;
+  const iframeSrc = `${widgetHost}/widget.html?server=${encodeURIComponent(serverUrl || '')}`;
 
   // Create Container Elements
   const container = document.createElement('div');

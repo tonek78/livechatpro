@@ -1,9 +1,22 @@
 // LiveChat Pro - Agent / Admin Dashboard Logic
 (function () {
   function getSocketServerUrl() {
-    if (window.LIVECHAT_SERVER_URL) return window.LIVECHAT_SERVER_URL;
-    if (localStorage.getItem('livechat_server_url')) return localStorage.getItem('livechat_server_url');
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:3000';
+    const urlParams = new URLSearchParams(window.location.search);
+    const serverParam = urlParams.get('server');
+
+    if (serverParam && !serverParam.includes('netlify.app')) {
+      return serverParam;
+    }
+    if (window.LIVECHAT_SERVER_URL && !window.LIVECHAT_SERVER_URL.includes('netlify.app')) {
+      return window.LIVECHAT_SERVER_URL;
+    }
+    if (localStorage.getItem('livechat_server_url')) {
+      const saved = localStorage.getItem('livechat_server_url');
+      if (!saved.includes('netlify.app')) return saved;
+    }
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:3000';
+    }
     return null;
   }
 
