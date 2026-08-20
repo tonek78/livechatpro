@@ -219,8 +219,12 @@
   
   <script>
     // Post message to parent window on close button click
-    document.getElementById('closeWidget')?.addEventListener('click', () => {
-      window.parent.postMessage({ type: 'LIVECHAT_PRO_CLOSE' }, '*');
+    document.getElementById('closeWidget')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      try {
+        window.parent.postMessage({ type: 'LIVECHAT_PRO_CLOSE' }, '*');
+        window.top.postMessage({ type: 'LIVECHAT_PRO_CLOSE' }, '*');
+      } catch (err) {}
     });
   </script>
 </body>

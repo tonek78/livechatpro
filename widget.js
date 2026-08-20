@@ -36,9 +36,20 @@
   const launcher = document.getElementById('livechat-launcher-btn');
 
   let isOpen = false;
-  launcher.addEventListener('click', () => {
-    isOpen = !isOpen;
+  function toggleWidget(show) {
+    isOpen = typeof show === 'boolean' ? show : !isOpen;
     wrapper.style.display = isOpen ? 'block' : 'none';
     launcher.style.transform = isOpen ? 'scale(0.9) rotate(90deg)' : 'scale(1)';
+  }
+
+  launcher.addEventListener('click', () => {
+    toggleWidget();
+  });
+
+  // Listen for close postMessage from widget.html iframe (X button click)
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'LIVECHAT_PRO_CLOSE') {
+      toggleWidget(false);
+    }
   });
 })();
