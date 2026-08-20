@@ -457,6 +457,16 @@ switch ($action) {
         echo json_encode(['success' => true, 'status' => $status]);
         break;
 
+    // 19. Save System Settings
+    case 'save_settings':
+        $settingsJson = $_POST['settings'] ?? '';
+        if ($settingsJson) {
+            $stmt = $pdo->prepare("INSERT INTO livechat_settings (key_name, val_text) VALUES ('system_settings', ?) ON DUPLICATE KEY UPDATE val_text = VALUES(val_text)");
+            $stmt->execute([$settingsJson]);
+        }
+        echo json_encode(['success' => true]);
+        break;
+
     default:
         echo json_encode(['success' => false, 'message' => 'Érvénytelen művelet']);
         break;

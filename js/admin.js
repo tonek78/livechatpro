@@ -70,7 +70,33 @@
     } catch (e) {}
   }
 
-  fetchAgentStatus();
+  // UNIVERSAL TAB SWITCHING LISTENER WITH GUARANTEED FALLBACK
+  document.querySelectorAll('#adminTabs button[data-bs-toggle="tab"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = btn.getAttribute('data-bs-target');
+      
+      try {
+        const bsTab = bootstrap.Tab.getOrCreateInstance(btn);
+        bsTab.show();
+      } catch (err) {}
+
+      // Explicitly trigger active class toggling
+      document.querySelectorAll('#adminTabs button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#adminTabsContent > .tab-pane').forEach(p => p.classList.remove('show', 'active'));
+      
+      btn.classList.add('active');
+      const targetPane = document.querySelector(targetId);
+      if (targetPane) targetPane.classList.add('show', 'active');
+
+      // Trigger data loaders for specific tabs
+      if (targetId === '#users-pane') loadUsers();
+      if (targetId === '#archive-pane') loadArchive();
+      if (targetId === '#offline-pane') loadOfflineTickets();
+      if (targetId === '#profile-pane') fetchProfile();
+      if (targetId === '#embed-pane') updateEmbedCodeSnippet();
+    });
+  });
 
   // DOM Elements
   const chatListContainer = document.getElementById('adminChatList');
@@ -1048,6 +1074,34 @@
       navigator.clipboard.writeText(embedPre.textContent);
       showToast('Beágyazó kód másolva a vágólapra!', 'success');
     }
+  });
+
+  // SETTINGS TAB LISTENERS
+  document.getElementById('btnSaveSettings')?.addEventListener('click', async () => {
+    const soundToggle = document.getElementById('settingSoundToggle')?.checked;
+    const welcomeMsg = document.getElementById('settingWelcomeMsg')?.value.trim();
+    const offlineMsg = document.getElementById('settingOfflineMsg')?.value.trim();
+
+    const settings = { soundToggle, welcomeMsg, offlineMsg };
+    localStorage.setItem('livechat_settings', JSON.stringify(settings));
+
+    const formData = new FormData();
+    formData.append('action', 'save_settings');
+    formData.append('settings', JSON.stringify(settings));
+    try {
+      await fetch(API_URL, { method: 'POST', body: formData });
+    } catch (e) {}
+
+    showToast('Beállítások sikeresen elmentve!', 'success');
+  });
+
+  document.querySelectorAll('.theme-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const color = btn.getAttribute('data-color');
+      document.documentElement.style.setProperty('--primary-gradient', `linear-gradient(135deg, ${color} 0%, #8b5cf6 100%)`);
+      localStorage.setItem('livechat_primary_color', color);
+      showToast('Elsődleges színtéma frissítve!', 'info');
+    });
   });
 
   function escapeHtml(str) {
