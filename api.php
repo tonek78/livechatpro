@@ -439,6 +439,24 @@ switch ($action) {
         }
         break;
 
+    // 17. Set Operator Status (Online / Away / Offline)
+    case 'set_agent_status':
+        $status = trim($_POST['status'] ?? 'online');
+        if (!in_array($status, ['online', 'away', 'offline'])) $status = 'online';
+
+        $stmt = $pdo->prepare("INSERT INTO livechat_settings (key_name, val_text) VALUES ('system_agent_status', ?) ON DUPLICATE KEY UPDATE val_text = VALUES(val_text)");
+        $stmt->execute([$status]);
+        echo json_encode(['success' => true, 'status' => $status]);
+        break;
+
+    // 18. Get Operator Status
+    case 'get_agent_status':
+        $stmt = $pdo->prepare("SELECT val_text FROM livechat_settings WHERE key_name = 'system_agent_status'");
+        $stmt->execute();
+        $status = $stmt->fetchColumn() ?: 'online';
+        echo json_encode(['success' => true, 'status' => $status]);
+        break;
+
     default:
         echo json_encode(['success' => false, 'message' => 'Érvénytelen művelet']);
         break;

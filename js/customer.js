@@ -115,9 +115,35 @@
     }
   }
 
+  // System Operator Status Poller
+  async function checkOperatorStatus() {
+    try {
+      const res = await fetch(`${API_URL}?action=get_agent_status`);
+      const data = await res.json();
+      if (data.success && data.status) {
+        const headerStatus = document.getElementById('widgetHeaderStatus');
+        if (data.status === 'offline') {
+          if (headerStatus) headerStatus.innerHTML = `<span class="status-dot offline"></span> Jelenleg Offline`;
+          if (!currentRoomId) showView('offline');
+        } else if (data.status === 'away') {
+          if (headerStatus) headerStatus.innerHTML = `<span class="status-dot away"></span> Operátorok elfoglaltak`;
+        } else {
+          if (headerStatus) headerStatus.innerHTML = `<span class="status-dot online"></span> Online operátorok`;
+          if (!currentRoomId && document.getElementById('startFormView')?.classList.contains('d-none')) {
+            showView('form');
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
   if (customerData && currentRoomId) {
     initCustomerSession(customerData.name, customerData.email, customerData.department);
+  } else {
+    checkOperatorStatus();
   }
+
+  setInterval(checkOperatorStatus, 3000);
 
   // Customer Form Submit
   customerForm?.addEventListener('submit', (e) => {

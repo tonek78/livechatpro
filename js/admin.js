@@ -30,6 +30,48 @@
     }, 500);
   });
 
+  // OPERATOR STATUS SWITCHER (ONLINE / AWAY / OFFLINE)
+  document.querySelectorAll('.status-option').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const status = item.getAttribute('data-status');
+      updateAgentStatus(status, true);
+    });
+  });
+
+  async function updateAgentStatus(status, sendToServer = false) {
+    const dot = document.getElementById('agentStatusDot');
+    const label = document.getElementById('agentStatusLabel');
+
+    if (dot) dot.className = `status-dot ${status}`;
+    if (label) {
+      label.textContent = status === 'online' ? 'Online' : status === 'away' ? 'Elfoglalt' : 'Offline';
+    }
+    localStorage.setItem('livechat_agent_status', status);
+
+    if (sendToServer) {
+      const formData = new FormData();
+      formData.append('action', 'set_agent_status');
+      formData.append('status', status);
+      try {
+        await fetch(API_URL, { method: 'POST', body: formData });
+        showToast(`Státusz frissítve: ${status === 'online' ? 'Online' : status === 'away' ? 'Elfoglalt' : 'Offline'}`, 'info');
+      } catch (e) {}
+    }
+  }
+
+  async function fetchAgentStatus() {
+    try {
+      const res = await fetch(`${API_URL}?action=get_agent_status`);
+      const data = await res.json();
+      if (data.success && data.status) {
+        updateAgentStatus(data.status, false);
+      }
+    } catch (e) {}
+  }
+
+  fetchAgentStatus();
+
   // DOM Elements
   const chatListContainer = document.getElementById('adminChatList');
   const emptyState = document.getElementById('adminEmptyState');
